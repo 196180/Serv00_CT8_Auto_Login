@@ -2,25 +2,6 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
-async function sendDingTalkMessage(message) {
-  const webhookUrl = process.env.DINGDING_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.error('DingTalk webhook URL not set');
-    return;
-  }
-
-  try {
-    await axios.post(webhookUrl, {
-      msgtype: 'text',
-      text: {
-        content: message
-      }
-    });
-  } catch (error) {
-    console.error('Error sending DingTalk message:', error);
-  }
-}
-
 function formatToISO(date) {
   return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
 }
@@ -59,6 +40,30 @@ async function sendTelegramMessage(message) {
   } catch (error) {
     console.error('Error sending Telegram message:', error);
   }
+}
+
+async function sendDingTalkMessage(message) {
+  const webhookUrl = process.env.DINGDING_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.error('DingTalk webhook URL not set');
+    return;
+  }
+
+  try {
+    await axios.post(webhookUrl, {
+      msgtype: 'text',
+      text: {
+        content: message
+      }
+    });
+  } catch (error) {
+    console.error('Error sending DingTalk message:', error);
+  }
+}
+
+async function sendMessage(message) {
+  await sendTelegramMessage(message);
+  await sendDingTalkMessage(message);
 }
 
 async function loginAccount(account, browser) {
@@ -100,18 +105,18 @@ async function loginAccount(account, browser) {
       const nowBeijing = formatToISO(new Date(new Date().getTime() + 8 * 60 * 60 * 1000));
       const message = `账号 ${username} (${type}) 于北京时间 ${nowBeijing}（UTC时间 ${nowUtc}）登录成功！`;
       console.log(message);
-      await sendTelegramMessage(message);
+      await sendMessage(message);
       return true;
     } else {
       const message = `账号 ${username} (${type}) 登录失败，请检查账号和密码是否正确。`;
       console.error(message);
-      await sendTelegramMessage(message);
+      await sendMessage(message);
       return false;
     }
   } catch (error) {
     const errorMessage = `账号 ${username} (${type}) 登录时出现错误: ${error}`;
     console.error(errorMessage);
-    await sendTelegramMessage(errorMessage);
+    await sendMessage(errorMessage);
     return false;
   } finally {
     await page.close();
@@ -151,5 +156,5 @@ async function loginAccount(account, browser) {
   }
 
   console.log(summaryMessage);
-  await sendTelegramMessage(summaryMessage);
+  await sendMessage(summaryMessage);
 })();
