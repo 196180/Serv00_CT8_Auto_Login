@@ -1,6 +1,7 @@
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 const axios = require('axios');
+const crypto = require('crypto');
 
 function formatToISO(date) {
   return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
@@ -42,15 +43,27 @@ async function sendTelegramMessage(message) {
   }
 }
 
+function generateSignature(secret, timestamp) {
+  const stringToSign = `${timestamp}\n${secret}`;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(stringToSign);
+  return hmac.digest('base64');
+}
+
 async function sendDingTalkMessage(message) {
   const webhookUrl = process.env.DINGDING_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.error('DingTalk webhook URL not set');
+  const secret = process.env.DINGDING_SECRET;
+  if (!webhookUrl || !secret) {
+    console.error('DingTalk webhook URL or secret not set');
     return;
   }
 
+  const timestamp = Date.now();
+  const sign = generateSignature(secret, timestamp);
+  const finalUrl = `${webhookUrl}&timestamp=${timestamp}&sign=${encodeURIComponent(sign)}`;
+
   try {
-    await axios.post(webhookUrl, {
+    await axios.post(finalUrl, {
       msgtype: 'text',
       text: {
         content: message
