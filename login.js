@@ -2,6 +2,25 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
+async function sendDingTalkMessage(message) {
+  const webhookUrl = process.env.DINGDING_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.error('DingTalk webhook URL not set');
+    return;
+  }
+
+  try {
+    await axios.post(webhookUrl, {
+      msgtype: 'text',
+      text: {
+        content: message
+      }
+    });
+  } catch (error) {
+    console.error('Error sending DingTalk message:', error);
+  }
+}
+
 function formatToISO(date) {
   return date.toISOString().replace('T', ' ').replace('Z', '').replace(/\.\d{3}Z/, '');
 }
